@@ -1,0 +1,21 @@
+# session-local harness config — not part of the artifact
+.mcp.json
+opencode.json
+.claude/
+
+# unused engine templates from the workspace brief
+unity_urp_2d/
+unity_urp_3d/
+
+# godot cache
+godot/.godot/
+
+# heavy media: films ship as release attachments, scripts ship in git
+video/frames/
+video/narration/*.wav
+video/narration2/*.wav
+video/sections/
+video/timelapse_silent.mp4
+video/explainer_silent.mp4
+video/the_addressable_world.mp4
+video/how_and_why.mp4
