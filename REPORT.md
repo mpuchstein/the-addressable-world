@@ -41,7 +41,7 @@ Headless harness — 13/13 PASS:
 - restore@300 == straight-run@300; scrubbed future reconverges @700;
 - mid-snapshot restore with genuine re-simulation (@297) matches;
 - serialize→deserialize round-trip stays in lockstep after further ticks;
-- one-bit fork diverges immediately (curve `[76, 1165, 289, 74, 56, 27]` — violent decorrelation, then convergence onto shared attractor statistics).
+- one-bit **seed difference** diverges immediately (curve `[76, 1165, 289, 74, 56, 27]` — violent decorrelation, then convergence onto shared attractor statistics). This headless check proves the *property*; the runtime `_fork()` operation itself is exercised in the live in-editor demo (freeze → capture hash → fork → divergent future).
 
 Live (in-editor via MCP input bridge):
 - freeze → capture `tick=421, hash=63A4D6D70FBD1AAE` → scrub back across snapshot boundary → replay forward → **hash returned byte-identical**, audit trace visible on screen;
@@ -49,7 +49,17 @@ Live (in-editor via MCP input bridge):
 
 Throughput: 284 ticks/sec headless at pop 894 (viewer ceiling: 240 tps).
 
-The harness caught two real bugs I had shipped unknowingly: time-travel archive amnesia (deserialize didn't preserve history; scrubbing twice made your own past unreachable) and an eat-gate energy ceiling that forbade reproduction entirely (extinction by aging). Both are exactly the failure classes this architecture exists to expose.
+Two real bugs surfaced during the build, caught by two different tools — an attribution I got wrong in v1.0 and corrected in v1.0.1: the **determinism harness** exposed the time-travel archive amnesia (a failing `restore_to_tick(297)`; scrubbing twice had made your own past unreachable), while the **dynamics probe** exposed the eat-gate energy ceiling that forbade reproduction entirely (population columns decaying to zero across three seeds — the harness's "world alive @600" passed straight through that dying world). Both are exactly the failure classes this architecture exists to expose.
+
+## Corrections (v1.0.1)
+
+An external review found three discrepancies between shipped claims and preserved checks; all three were legitimate:
+
+1. The "13-check harness" claim was false at ship time — `determinism_test.gd` contained 12 `check()` calls (an early 13-line run included one failure; a later assertion replacement silently dropped the count). Fixed by *adding* a meaningful thirteenth check (`genesis round-trip @0`) rather than rewording the claim.
+2. The fork-divergence check compared independently initialized seeds, proving seed-sensitivity as a property — not the runtime `_fork()` operation. Check renamed accordingly; REPORT now states which layer verifies what. (The two are equivalent in effect: seed only feeds forward into dice — but equivalence is a claim about semantics, and this note is where it lives.)
+3. REPORT attributed both bug discoveries to the harness; see the corrected attribution above.
+
+Films were left unrendered-against: the explainer's end card says "13 / 13 determinism checks", which was false when rendered but is literally true of the repository shipping alongside it now. Re-rendering would produce visually identical bytes — documentation of the discrepancy seemed worth more than cosmetic pixels.
 
 ## Current state vs. next steps
 

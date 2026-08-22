@@ -58,7 +58,10 @@ func _initialize() -> void:
 	e.run_to(600)
 	check("different seed diverges", e.state_hash() != b.state_hash())
 
-	# fork divergence measurement (the sensitive-dependence probe)
+	# fork divergence measurement (the sensitive-dependence probe).
+	# NOTE: this exercises the *property* (a one-bit seed difference yields
+	# divergent futures); the runtime _fork() operation itself is verified
+	# live in-editor (freeze -> capture hash -> fork -> observe divergence).
 	var f1 := WorldSim.new_seeded(777)
 	var f2 := WorldSim.new_seeded(778)
 	var dists := []
@@ -67,7 +70,14 @@ func _initialize() -> void:
 		f2.run_to(f2.tick + 150)
 		dists.append(_world_dist(f1, f2))
 	print("      divergence (seed delta=1, world-distance): ", dists)
-	check("one-bit fork diverges immediately", dists[1] > 0)
+	check("one-bit seed difference diverges immediately", dists[1] > 0)
+
+	# genesis stays addressable: rewind a lived-in world back to tick 0
+	var g := WorldSim.new_seeded(12345)
+	g.run_to(500)
+	var g_rewound := g.restore_to_tick(0)
+	var g0 := WorldSim.new_seeded(12345)
+	check("genesis round-trip @0", g_rewound and g.state_hash() == g0.state_hash())
 
 	print("== done in %d ms, failures: %d ==" % [Time.get_ticks_msec() - t0, failures])
 	quit(1 if failures > 0 else 0)

@@ -30,7 +30,8 @@ godot --headless --path godot --script tests/determinism_test.gd --quit-after 20
 ```
 
 13 checks: same-seed byte-identity, scrub-and-replay reconvergence,
-mid-snapshot restores, serialize/deserialize lockstep, one-bit fork divergence.
+mid-snapshot restores with re-simulation, serialize/deserialize lockstep,
+one-bit seed-divergence sensitivity, genesis round-trip.
 
 ## How determinism is kept
 
