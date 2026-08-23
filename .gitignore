@@ -14,8 +14,11 @@ godot/.godot/
 video/frames/
 video/narration/*.wav
 video/narration2/*.wav
+video/narration3/*.wav
 video/sections/
 video/timelapse_silent.mp4
 video/explainer_silent.mp4
+video/twins_silent.mp4
 video/the_addressable_world.mp4
 video/how_and_why.mp4
+video/two_universes.mp4
