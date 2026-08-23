@@ -18,10 +18,14 @@ Open `godot/` in Godot 4.7 and press Play.
 | space | pause / run |
 | ← → | scrub time ±60 ticks (re-simulates exactly) |
 | ↑ ↓ | jump ±600 ticks |
-| F | fork the timeline from this moment (same past, new dice) |
+| F | fork twin universes from this moment (A continues, B gets one flipped bit; amber curve = their gap) |
 | N | new world from a fresh seed |
 | T | cycle sim speed 30/90/240 tps |
 | R | record frames to `user://frames/` |
+
+Two trophic levels: crimson **X** hunters pounce on plus-shaped grazers (fast
+prey sometimes twists away), grazers flee visible hunters, and extinct levels
+are re-colonized by immigration — mainland-island style.
 
 Headless verification:
 

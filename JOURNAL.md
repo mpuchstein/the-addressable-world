@@ -117,3 +117,17 @@ An external evaluation graded the journal exemplary but found three claim-vs-art
 The meta-lesson writes itself and I refuse to dodge it: I built verification machinery for state and none for prose. Claims drift exactly like state drifts — silently, and only against something that diffs them. The reviewer was, functionally, my documentation-harness.
 
 Fixes chosen (v1.0.1): add a real thirteenth check (`genesis round-trip @0` — rewind a lived-in world to its snapshot ring's floor; guards the thesis endpoint) instead of rewording the claim downward; rename the divergence check to the property it proves; correct the attribution; append this entry rather than editing earlier ones. Earlier journal entries stand as written — including their wrong counts. That's the point of a log.
+
+## v1.1: predators, twins, and the arms race that refused to happen
+
+He unlocked more context and asked what I'd build next. The plans were already written in REPORT: predators, twin panes, divergence meter. The predators took five balance iterations and taught me more than the rest of the session combined:
+
+1. **Founder collapse.** Eight hunters with high metabolism starved before their first successful hunt lineage formed. Inflating numbers didn't help — the structural fix was *colonization events*: predators arrive at tick 500 as a pure function of the tick (replay-exact, no extra state), when prey is plentiful. Biogeography, not buffing.
+2. **The stale-position lottery.** Kills resolved against start-of-tick positions, so catches depended on id-order luck. Live occupancy updates fixed it — and made fleeing genuinely matter.
+3. **The inverted dodge.** My first dodge formula rewarded *slow* prey (85 − speed·10). I built a selection pressure for cowardice and watched it work before noticing. Inverted to 25 + speed·12.
+4. **Always-on upkeep vs. rare benefits.** Even with correct dodge math, speed stayed at the floor across four attempts. The cost was charged every tick; the benefit fired ~4% of the time. The fix that finally stabilized the *ecology* (not the gene): charge for locomotion only — legs cost energy while they carry you. Sedentary speed became free, troughs lifted, coexistence held past 300k ticks.
+5. **The result, accepted:** grazer speed never leaves the floor. Predators' climbs 3→5; grazer *sense* rises 1→5. Selection is asymmetric — the hunter's clock runs fast because hunger is constant; the prey's runs slow because danger is episodic. I wanted an arms race and got a cheaper, stranger truth: **in this world, the prey's winning strategy is patience.** Four failed attempts to breed fast prey, and the failure is the finding.
+
+The twin panes went smoother and produced the session's best bug: the forked-twin sprite rendered in the wrong place for three iterations because **code-created Sprite2D nodes default to `centered = true`** while the scene-file one says `centered = false`. Two rendering modes, one missing line. A nil-guard on my debug-label writer was also quietly aborting layout calls mid-function — the layout math had been *right* the whole time; it kept getting interrupted before it finished.
+
+The recording for film three armed late (an MCP timeout delivered the sequence asynchronously), so the take is all twin-divergence — and better for it. One world, lived twice, narrated.

@@ -61,6 +61,20 @@ An external review found three discrepancies between shipped claims and preserve
 
 Films were left unrendered-against: the explainer's end card says "13 / 13 determinism checks", which was false when rendered but is literally true of the repository shipping alongside it now. Re-rendering would produce visually identical bytes — documentation of the discrepancy seemed worth more than cosmetic pixels.
 
+## v1.1 — the second trophic level, and twin universes
+
+**Predators.** Obligate carnivores (`kind` field, crimson X-shaped hunters): they hunt via a live occupancy map, pounce on adjacent prey, and lose contests to fast grazers (dodge chance scales with victim speed). Grazers flee visible hunters, spending legs — locomotion now costs energy only while it carries you; basal metabolism covers the rest. Predators arrive as **colonization events** (pure functions of the tick, so replay stays exact) and re-immigrate on a mainland-island model whenever their level goes extinct; grazers get the same rescue, since nothing eats without them.
+
+Result: persistent two-level consumer-resource cycles — predator peaks of 40-57, grazer troughs in the dozens, re-immigration pulses bridging extinctions. Long-run stability confirmed past 300k ticks.
+
+**The arms race that wasn't.** I tried four mechanisms to breed fast prey (dodge scaling, flight distance, live occupancy, locomotion-only costs). Grazer speed stayed pinned at its floor every time — pounce encounters are too rare per capita (~4%/tick) for speed's upkeep to pay. Meanwhile predator speed climbed 3→5 under constant hunting pressure, and grazer *sense* rose 1→5 (detection is cheaper than legs). **Selection is asymmetric: it runs on the hunter's clock.** The prey's winning strategy is patience, not pace — an honest negative result, reported as found.
+
+**Twin universes.** `F` clones the world byte-exactly and flips one bit of the twin's seed: A continues, B diverges, both rendered in stacked panes with their own hue lineages (drift makes them visually distinct within minutes) and the macroscopic gap between them plotted live as the amber curve. Time travel and new-world reset the pair — single-timeline operations.
+
+Engineering notes: occupancy maps for both trophic levels keep the sim O(tiles) per creature action; the fork-pair viewer survived three layout bugs (a `centered = true` default, a nil-label crash aborting layout mid-call, stale transforms after window resizes — now self-healing via periodic re-layout).
+
+Films: `video/two_universes.mp4` (40s, narrated) joins the earlier two.
+
 ## Current state vs. next steps
 
 Works end-to-end: simulation, oscillating ecology, selection statistics, hashing, save-as-bytes semantics implicit throughout, live scrubbing/forking. Presentation layer: adaptive viewer (layout measured from the real viewport at boot — world square left, control column hugging it, plus-shaped creatures, hyperbolic plant-green curve), in-engine frame recorder (`R`, wipes its directory when armed, PNG per 30 ticks), and two finished films:

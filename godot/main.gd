@@ -10,8 +10,12 @@ var COL_X := 1032          # right column origin
 var COL_W := 864
 
 var world: WorldSim
+var world_b: WorldSim = null       # forked twin: same past, mutated dice
+var stats_div: PackedInt32Array = PackedInt32Array()
 var px: PackedByteArray
 var tex: ImageTexture
+var sprite_b: Sprite2D
+var tex_b: ImageTexture
 var playing := true
 var tps := 30.0
 var acc := 0.0
@@ -25,6 +29,8 @@ var lbl_pop: Label
 var lbl_genes: Label
 var lbl_hash: Label
 var lbl_fork: Label
+var lbl_a: Label
+var lbl_b: Label
 var btn_play: Button
 var sld_speed: HSlider
 var sld_time: HSlider
@@ -35,23 +41,52 @@ func _ready() -> void:
 	px = PackedByteArray()
 	px.resize(WS.W * WS.H * 4)
 	var sprite: Sprite2D = $WorldSprite
-	tex = ImageTexture.create_from_image(_compose_image())
+	tex = ImageTexture.create_from_image(_compose_image(world))
 	sprite.texture = tex
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite_b = Sprite2D.new()
+	sprite_b.centered = false   # code-created sprites default to centered; the tscn one doesn't
+	tex_b = ImageTexture.create_from_image(_compose_image(world))
+	sprite_b.texture = tex_b
+	sprite_b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	add_child(sprite_b)
 	_layout(sprite)
+	get_viewport().size_changed.connect(_layout.bind($WorldSprite))
 	_build_ui()
 
 func _layout(sprite: Sprite2D) -> void:
 	## measure, don't assume: fit the world square to the actual window,
 	## hug the control column against it — no stranded gaps at any size.
+	## Paired mode splits the same footprint into two stacked panes:
+	## universe A on top, twin B below — nothing occludes anything.
 	var vp := get_viewport().get_visible_rect().size
 	var side := mini(vp.y - 48.0, vp.x * 0.52 - 48.0)
 	PX = clampi(int(side / WS.W), 4, 16)
-	ORIGIN = Vector2(24, (vp.y - PX * WS.W) / 2.0)
-	sprite.position = ORIGIN
-	sprite.scale = Vector2(PX, PX)
+	var px_a := PX
+	var px_b := PX
+	var oy_a: float = (vp.y - PX * WS.W) / 2.0
+	var oy_b: float = 0.0
+	if world_b != null:
+		px_a = maxi(3, PX / 2)
+		px_b = px_a
+		var stack := px_a * WS.W * 2 + 4
+		oy_a = (vp.y - stack) / 2.0
+		oy_b = oy_a + px_a * WS.W + 4
+	ORIGIN = Vector2(24, oy_a)
+	sprite.position = Vector2(24, oy_a)
+	sprite.scale = Vector2(px_a, px_a)
+	if is_instance_valid(sprite_b):
+		sprite_b.position = Vector2(24, oy_b)
+		sprite_b.scale = Vector2(px_b, px_b)
+		sprite_b.visible = world_b != null
 	COL_X = int(ORIGIN.x + PX * WS.W + 40)
 	COL_W = int(vp.x - COL_X - 32)
+	if is_instance_valid(lbl_a):
+		lbl_a.visible = world_b != null
+		lbl_b.visible = world_b != null
+		lbl_a.position = Vector2(28, oy_a + 4)
+		lbl_b.position = Vector2(28, oy_b + 4)
+	_note("layout vp=%s px %d/%d oy %.0f/%.0f" % [vp, px_a, px_b, oy_a, oy_b])
 
 func _process(delta: float) -> void:
 	frame += 1
@@ -62,36 +97,58 @@ func _process(delta: float) -> void:
 		steps = mini(steps, 500)
 		for k in range(steps):
 			world.tick_step()
+			if world_b:
+				world_b.tick_step()
+				stats_div.append(_world_dist(world, world_b))
 		if steps > 0:
 			dirty = true
 			sld_time.set_value_no_signal(world.tick)
 			sld_time.max_value = maxi(int(sld_time.max_value), world.tick)
 	if dirty:
 		dirty = false
-		tex.update(_compose_image())
+		tex.update(_compose_image(world))
+		if world_b:
+			tex_b.update(_compose_image(world_b))
+			sprite_b.visible = true
+	if world_b:
+		graph.queue_redraw()
 	_maybe_capture()
+	if frame % 30 == 0:
+		_layout($WorldSprite)   # self-healing placement: window quirks can't stick
 	if frame % 10 == 0:
 		_update_hud()
 
+func _world_dist(a: WorldSim, b: WorldSim) -> int:
+	## macroscopic twin-distance: population gap + plant-total gap
+	var tp1 := 0
+	for v in a.plants: tp1 += v
+	var tp2 := 0
+	for v in b.plants: tp2 += v
+	return absi(a.creatures.size() - b.creatures.size()) + absi(tp1 - tp2) / 500
+
 # ---------------------------------------------------------------- render
-func _compose_image() -> Image:
+func _compose_image(w: WorldSim) -> Image:
 	var n := WS.W * WS.H
 	px.resize(n * 4)
 	for i in range(n):
-		var b := world.plants[i]
-		var cap := maxi(1, world.fert[i])
+		var b := w.plants[i]
+		var cap := maxi(1, w.fert[i])
 		var ripe := (b * 100) / cap                       # 0..100
 		px[i * 4] = 12 + (cap * 10) / 160 + ripe / 5      # soil warmth + ripening
 		px[i * 4 + 1] = 14 + (b * 400) / (cap + b * 2)    # plant green, hyperbolic: sparse grass stays visible
 		px[i * 4 + 2] = 11
 		px[i * 4 + 3] = 255
-	for c in world.creatures:
-		var col := Color.from_hsv((c.genes.hue as int) / 360.0, 0.9, 1.0)
+	for c in w.creatures:
 		var cx: int = c.x as int
 		var cy: int = c.y as int
 		var arms_x := [0, 1, -1, 0, 0]
 		var arms_y := [0, 0, 0, 1, -1]
-		for arm in range(5):   # plus-shaped: reads as organism, not confetti
+		var col := Color.from_hsv((c.genes.hue as int) / 360.0, 0.9, 1.0)
+		if c.kind == WorldSim.KIND_PREDATOR:
+			col = Color(1.0, 0.32, 0.28)                  # hunters read crimson...
+			arms_x = [0, 1, -1, 1, -1]
+			arms_y = [0, 1, -1, -1, 1]                    # ...and X-shaped, not plus-shaped
+		for arm in range(5):
 			var xx: int = cx + arms_x[arm]
 			var yy: int = cy + arms_y[arm]
 			if xx < 0 or xx >= WS.W or yy < 0 or yy >= WS.H:
@@ -104,7 +161,10 @@ func _draw_graph() -> void:
 	var rect := Rect2(Vector2.ZERO, graph.size)
 	graph.draw_rect(rect, Color(0, 0, 0, 0.45))
 	graph.draw_rect(rect, Color(1, 1, 1, 0.15), false, 1.0)
+	if world_b and stats_div.size() > 2:
+		_draw_curve(stats_div, Color(1.0, 0.8, 0.25, 0.5), rect, 1.0)   # twin gap: background layer
 	_draw_curve(world.stats_plant, Color(0.35, 0.9, 0.4, 0.8), rect, 2.0)
+	_draw_curve(world.stats_pred, Color(1.0, 0.35, 0.3, 0.95), rect, 2.5)
 	_draw_curve(world.stats_pop, Color(1, 1, 1, 0.95), rect, 3.0)
 
 func _draw_curve(arr: PackedInt32Array, col: Color, rect: Rect2, width := 3.0) -> void:
@@ -126,22 +186,34 @@ func _draw_curve(arr: PackedInt32Array, col: Color, rect: Rect2, width := 3.0) -
 func _update_hud() -> void:
 	lbl_tick.text = "tick %d   speed %d tps" % [world.tick, int(tps)]
 	var pop := world.creatures.size()
+	var np := world.stats_pred[-1] if world.stats_pred.size() > 0 else 0
+	if world_b and world_b.stats_pred.size() > 0:
+		np = maxi(np, 0)
 	var avg_eff := 0
 	var avg_spd := 0
 	var avg_sense := 0
-	if pop > 0:
-		for c in world.creatures:
+	var n := 0
+	for c in world.creatures:
+		if c.kind == WorldSim.KIND_GRAZER:
+			n += 1
 			avg_eff += c.genes.eff
 			avg_spd += c.genes.speed
 			avg_sense += c.genes.sense
-		avg_eff /= pop; avg_spd /= pop; avg_sense /= pop
+	if n > 0:
+		avg_eff /= n; avg_spd /= n; avg_sense /= n
 	var plants_now: int = world.stats_plant[-1] if world.stats_plant.size() > 0 else 0
-	lbl_pop.text = "pop %d   plants %d" % [pop, plants_now]
-	lbl_genes.text = "avg genes  eff %d%%  spd %d  sense %d" % [avg_eff, avg_spd, avg_sense]
-	if frame % 30 == 0:
+	lbl_pop.text = "graze %d   pred %d   plants %d" % [pop - np, np, plants_now]
+	lbl_genes.text = "grazer genes  eff %d%%  spd %d  sense %d" % [avg_eff, avg_spd, avg_sense]
+	if frame % 30 == 0 or (world_b and frame % 15 == 5):
 		last_hash = world.state_hash()
-		lbl_hash.text = "hash %016X" % (last_hash & 0x7FFFFFFFFFFFFFFF)
-	lbl_fork.text = "forked @ tick %d" % fork_tick if fork_tick >= 0 else ""
+		lbl_hash.text = "A %016X" % (last_hash & 0x7FFFFFFFFFFFFFFF)
+		if world_b:
+			lbl_hash.text += "   B %016X" % (world_b.state_hash() & 0x7FFFFFFFFFFFFFFF)
+	if world_b:
+		var d: int = stats_div[-1] if stats_div.size() > 0 else 0
+		lbl_fork.text = "twins forked @ tick %d   divergence %d" % [fork_tick, d]
+	else:
+		lbl_fork.text = ""
 	if frame % 5 == 0:
 		graph.queue_redraw()
 
@@ -157,6 +229,19 @@ func _build_ui() -> void:
 	lbl_genes = _mk_label(ui, Vector2(x, 100))
 	lbl_hash = _mk_label(ui, Vector2(x, 136))
 	lbl_fork = _mk_label(ui, Vector2(x, 172))
+
+	lbl_a = Label.new()
+	lbl_a.text = "A"
+	lbl_a.add_theme_font_size_override("font_size", 26)
+	lbl_a.modulate = Color(1, 1, 1, 0.85)
+	lbl_a.visible = false
+	ui.add_child(lbl_a)
+	lbl_b = Label.new()
+	lbl_b.text = "B"
+	lbl_b.add_theme_font_size_override("font_size", 26)
+	lbl_b.modulate = Color(1.0, 0.5, 0.4, 0.9)
+	lbl_b.visible = false
+	ui.add_child(lbl_b)
 
 	btn_play = Button.new()
 	btn_play.text = "pause"
@@ -218,7 +303,7 @@ func _build_ui() -> void:
 
 	var gy := 396.0 + graph.size.y
 	var help := Label.new()
-	help.text = "space pause/run    arrows scrub time    F fork    N new world    T speed cycle    R record frames"
+	help.text = "space pause/run   arrows scrub time   F fork twin (inset)   N new world   T speed   R record"
 	help.position = Vector2(x, gy + 20)
 	help.modulate = Color(1, 1, 1, 0.5)
 	ui.add_child(help)
@@ -249,20 +334,30 @@ func _on_scrub(t: float) -> void:
 		return
 	playing = false
 	btn_play.text = "run"
+	_end_pair()   # time travel is a single-timeline operation
 	world.restore_to_tick(target)
 	dirty = true
 
 func _fork() -> void:
-	## mutate only the future's dice; state and shared past stay intact.
-	world.seed_i ^= mix_of_tick()
+	## twin universes: A keeps running, B is a byte-exact clone with mutated
+	## dice. Shared past, diverging future; the amber curve plots their gap.
+	world_b = WS.deserialize(world.serialize())
+	world_b.seed_i ^= WorldSim.mix64(world.tick * 2654435761 + 1)
 	fork_tick = world.tick
-	dirty = true
+	stats_div = PackedInt32Array()
+	_layout($WorldSprite)
+	_note("fork pair @ tick %d" % fork_tick)
 
-func mix_of_tick() -> int:
-	return WorldSim.mix64(world.tick * 2654435761 + 1)
+func _end_pair() -> void:
+	if world_b == null:
+		return
+	world_b = null
+	stats_div = PackedInt32Array()
+	sprite_b.visible = false
 
 func _new_world(seed_val: int) -> void:
 	world = WS.new_seeded(seed_val)
+	_end_pair()
 	fork_tick = -1
 	sld_time.set_value_no_signal(0)
 	sld_time.max_value = 60
@@ -300,6 +395,8 @@ var last_rec_tick := -1000000
 const SPEED_PRESETS := [30, 90, 240]
 
 func _note(s: String) -> void:
+	if not is_instance_valid(lbl_debug):
+		return
 	debug_lines.append(s)
 	if debug_lines.size() > 4:
 		debug_lines = debug_lines.slice(debug_lines.size() - 4)
@@ -338,6 +435,7 @@ func _jump(delta_ticks: int) -> void:
 		return
 	playing = false
 	btn_play.text = "run"
+	_end_pair()   # time travel is a single-timeline operation
 	world.restore_to_tick(target)
 	sld_time.set_value_no_signal(target)
 	dirty = true
