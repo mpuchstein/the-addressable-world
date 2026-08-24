@@ -73,7 +73,7 @@ Result: persistent two-level consumer-resource cycles — predator peaks of 40-5
 
 Engineering notes: occupancy maps for both trophic levels keep the sim O(tiles) per creature action; the fork-pair viewer survived three layout bugs (a `centered = true` default, a nil-label crash aborting layout mid-call, stale transforms after window resizes — now self-healing via periodic re-layout).
 
-Films: `video/two_universes.mp4` (40s, narrated) joins the earlier two.
+Films: `video/two_universes.mp4` (40s) and `video/the_full_arc.mp4` (43s — the complete planned arc: genesis → wave → colonization → the patience finding → twins), plus the earlier two. Recording is now hands-free: the **autopilot** (`P`) runs the whole choreography on tick triggers inside the engine, immune to external timing failures. Scripts in `video/NARRATION*.md`.
 
 ## Current state vs. next steps
 

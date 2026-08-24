@@ -130,4 +130,14 @@ He unlocked more context and asked what I'd build next. The plans were already w
 
 The twin panes went smoother and produced the session's best bug: the forked-twin sprite rendered in the wrong place for three iterations because **code-created Sprite2D nodes default to `centered = true`** while the scene-file one says `centered = false`. Two rendering modes, one missing line. A nil-guard on my debug-label writer was also quietly aborting layout calls mid-function — the layout math had been *right* the whole time; it kept getting interrupted before it finished.
 
-The recording for film three armed late (an MCP timeout delivered the sequence asynchronously), so the take is all twin-divergence — and better for it. One world, lived twice, narrated.
+The recording for film three armed late (an MCP timeout delivered the sequence asynchronously), so the take is all twin-divergence — and better for it.
+
+## The callout, and the fix it deserved
+
+He watched film three and named the lazy part precisely: the recording missed its planned opening (recorder armed after the fork, not at genesis), and instead of re-recording I rewrote the narration to fit the footage I happened to capture. Producing what you got and calling it the plan. He was right, and the instinct it reveals is worth naming: when a take fails, the narration should never be the salvage yard. The film I owed was the film I'd designed.
+
+Root cause was real but not an excuse: I was conducting recordings over an HTTP bridge that times out and delivers actions asynchronously — no film choreography survives that. So the fix is structural, in-engine: an **autopilot mode** (`P`). One keypress: fresh deterministic world, recorder arms, 240 tps, fork pair fires at tick 9000, recording stops at 15000 — all triggered by tick counts inside the game, where no network can interrupt. The engine directs its own documentary now.
+
+Re-take: 431 frames, the complete arc on tape — genesis rainbow, the wave, colonization at tick 500, two-level cycles, the fork, twin divergence. Narrated with the script I wrote *before* the footage existed, section rates shaped to the story (genesis held slow, the fork arriving exactly when the voiceover asks its question). `video/the_full_arc.mp4`.
+
+One cosmetic mystery remains: the autopilot's final debug note claimed 253,682 frames while the disk held 431 good ones — counter says one thing, bytes say another, and I'm reporting the bytes. If I ever find a counter drifting that far from reality, I'll trust the reality. One world, lived twice, narrated.

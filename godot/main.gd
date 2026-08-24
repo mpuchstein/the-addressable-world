@@ -112,6 +112,7 @@ func _process(delta: float) -> void:
 			sprite_b.visible = true
 	if world_b:
 		graph.queue_redraw()
+	_auto_step()
 	_maybe_capture()
 	if frame % 30 == 0:
 		_layout($WorldSprite)   # self-healing placement: window quirks can't stick
@@ -386,12 +387,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		_note("speed %d tps" % int(tps))
 	elif event.is_action_pressed("record_toggle"):
 		_toggle_record()
+	elif event.is_action_pressed("autopilot"):
+		_toggle_autopilot()
 
 var lbl_debug: Label
 var debug_lines: PackedStringArray = PackedStringArray()
 var recording := false
 var frame_idx := 0
 var last_rec_tick := -1000000
+var auto := false
+var auto_forked := false
+const AUTO_FORK_TICK := 9000
+const AUTO_STOP_TICK := 15000
 const SPEED_PRESETS := [30, 90, 240]
 
 func _note(s: String) -> void:
@@ -414,6 +421,35 @@ func _toggle_record() -> void:
 
 func _last_note_rec() -> void:
 	_note("recording %s  frames=%d" % ["ON" if recording else "OFF", frame_idx])
+
+func _toggle_autopilot() -> void:
+	## produce mode: one keypress runs the full planned arc, hands-free.
+	## Tick-triggered, so network hiccups can't conduct the film anymore.
+	auto = true
+	auto_forked = false
+	_new_world(20260823)
+	if not recording:
+		_toggle_record()
+	tps = 240.0
+	sld_speed.set_value_no_signal(240.0)
+	acc = 0.0
+	playing = true
+	btn_play.text = "pause"
+	_note("autopilot: genesis -> fork @%d -> stop @%d" % [AUTO_FORK_TICK, AUTO_STOP_TICK])
+
+func _auto_step() -> void:
+	if not auto or not playing:
+		return
+	if not auto_forked and world.tick >= AUTO_FORK_TICK:
+		auto_forked = true
+		_fork()
+	if world.tick >= AUTO_STOP_TICK:
+		if recording:
+			_toggle_record()
+		playing = false
+		auto = false
+		btn_play.text = "run"
+		_note("autopilot: done, %d frames" % frame_idx)
 
 func _maybe_capture() -> void:
 	if not recording or world.tick - last_rec_tick < 30:
